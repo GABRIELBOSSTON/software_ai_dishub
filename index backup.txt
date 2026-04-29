@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Monitoring CCTV Jakarta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'DM Sans', sans-serif; background: #0a0a0f; overflow: hidden; }
+        #map { height: 100vh; width: 100%; z-index: 1; filter: brightness(0.9) saturate(0.8); }
+
+        .btn-analysis {
+            position: relative; display: flex; align-items: center; gap: 12px;
+            padding: 14px 24px; border-radius: 100px;
+            background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 40%, #a855f7 70%, #d946ef 100%);
+            border: 2.5px solid #1a0a2e; color: white;
+            font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 13px;
+            cursor: pointer; transition: all 0.3s ease;
+            box-shadow: 0 0 0 1px rgba(139,92,246,0.3), 0 0 20px rgba(139,92,246,0.5),
+                0 0 40px rgba(168,85,247,0.3), 0 0 80px rgba(217,70,239,0.15),
+                inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.2);
+        }
+        .btn-analysis::before {
+            content: ''; position: absolute; inset: 0; border-radius: 100px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        .btn-analysis:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 0 0 1px rgba(139,92,246,0.5), 0 0 30px rgba(139,92,246,0.8),
+                0 0 60px rgba(168,85,247,0.5), 0 0 100px rgba(217,70,239,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.2);
+        }
+        .btn-analysis:active { transform: scale(0.98); }
+        .btn-analysis .icon-wrap {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .btn-analysis .label-wrap { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+        .btn-analysis .label-main { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+        .btn-analysis .label-sub { font-size: 9px; font-weight: 700; opacity: 0.5; letter-spacing: 0.15em; text-transform: uppercase; margin-top: 2px; }
+
+        .custom-popup .leaflet-popup-content-wrapper {
+            padding: 0; overflow: hidden; border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.8);
+        }
+        .custom-popup .leaflet-popup-content { margin: 0; width: 280px !important; }
+        .leaflet-popup-tip-container { display: none; }
+
+        .camera-marker {
+            background: white; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; transition: transform 0.2s;
+        }
+
+        #hotspotSidebar {
+            position: fixed; right: 20px; top: 80px; bottom: 20px; width: 300px;
+            z-index: 1000; background: rgba(255,255,255,0.97); backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,255,255,0.9);
+            display: flex; flex-direction: column; overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        #hotspotSidebar .sidebar-header { padding: 20px 20px 16px; border-bottom: 1px solid #f1f5f9; background: #fafafa; }
+        #hotspotSidebar .sidebar-scroll { flex: 1; overflow-y: auto; padding: 16px 20px 20px; }
+        #hotspotSidebar .sidebar-scroll::-webkit-scrollbar { width: 3px; }
+        #hotspotSidebar .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+        #hotspotSidebar .sidebar-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+
+        .filter-chip {
+            padding: 5px 12px; border-radius: 100px; font-size: 10px; font-weight: 700;
+            letter-spacing: 0.02em; cursor: pointer; transition: all 0.2s; border: 1.5px solid transparent;
+        }
+        .filter-chip.active { background: #1e293b; color: white; border-color: #1e293b; }
+        .filter-chip:not(.active) { background: white; color: #64748b; border-color: #e2e8f0; }
+        .filter-chip:not(.active):hover { border-color: #94a3b8; color: #334155; }
+
+        .time-tab { flex: 1; padding: 8px; text-align: center; font-size: 10px; font-weight: 700; border-radius: 10px; cursor: pointer; transition: all 0.2s; color: #94a3b8; }
+        .time-tab.active { background: white; color: #1e293b; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+        .hotspot-item {
+            display: flex; align-items: center; gap: 12px; padding: 10px 0;
+            border-bottom: 1px solid #f8fafc; cursor: pointer; transition: all 0.2s;
+            border-radius: 8px;
+        }
+        .hotspot-item:hover { padding-left: 8px; background: #f8fafc; padding-right: 8px; }
+        .hotspot-item:last-child { border-bottom: none; }
+
+        .rank-num { font-size: 18px; font-weight: 800; color: #e2e8f0; width: 28px; flex-shrink: 0; font-family: 'Space Grotesk', sans-serif; }
+
+        #analysisWindow {
+            position: fixed; z-index: 10005; width: 440px; height: 560px;
+            display: none; flex-direction: column; border-radius: 16px; overflow: hidden;
+            background: #0f0f17;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.2);
+            border: 1px solid rgba(139,92,246,0.15); min-width: 300px; min-height: 300px; resize: both;
+        }
+        #analysisWindow.visible { display: flex; }
+
+        #analysisHeader {
+            cursor: move; user-select: none; flex-shrink: 0; background: #0f0f17;
+            border-bottom: 1px solid rgba(255,255,255,0.06); padding: 14px 16px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .win-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+        .analysis-body {
+            flex: 1; overflow-y: auto; padding: 20px; background: #0f0f17;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+        .analysis-body::-webkit-scrollbar { width: 3px; }
+        .analysis-body::-webkit-scrollbar-track { background: transparent; }
+        .analysis-body::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.3); border-radius: 10px; }
+
+        .ai-card {
+            background: linear-gradient(135deg, rgba(109,40,217,0.15), rgba(168,85,247,0.08));
+            border: 1px solid rgba(139,92,246,0.2); border-radius: 14px; padding: 16px;
+        }
+        .section-label {
+            font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+            color: rgba(255,255,255,0.3); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+        }
+        .section-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+        .sentiment-card {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px; padding: 14px; display: flex; gap: 12px; align-items: flex-start; transition: all 0.2s;
+        }
+        .sentiment-card:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.12); }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; letter-spacing: -0.02em; }
+        .win-resize-handle { height: 20px; background: #0f0f17; border-top: 1px solid rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: flex-end; padding: 0 8px; cursor: nwse-resize; flex-shrink: 0; }
+        .video-wrapper { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 14px; background: #000; }
+        .video-wrapper video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+
+        #cctvModal { position: fixed; inset: 0; z-index: 9999; background: rgba(5,5,15,0.85); backdrop-filter: blur(12px); display: none; align-items: center; justify-content: center; padding: 16px; }
+        #cctvModal.open { display: flex; }
+        .modal-card { background: white; width: 100%; max-width: 1100px; border-radius: 28px; overflow: hidden; display: flex; flex-direction: column; height: 88vh; box-shadow: 0 40px 80px rgba(0,0,0,0.4); }
+
+        .brand-pill { position: fixed; bottom: 24px; left: 24px; z-index: 1000; background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border-radius: 16px; padding: 12px 18px; box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.9); }
+        .search-bar { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 1000; width: 100%; max-width: 680px; padding: 0 16px; }
+        .search-inner { background: rgba(255,255,255,0.97); backdrop-filter: blur(20px); border-radius: 16px; padding: 8px 8px 8px 16px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 24px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.9); }
+
+        #hotspotSidebar.hidden-sidebar { opacity: 0; pointer-events: none; transform: translateX(20px); }
+
+        .btn-draw { color: white; font-weight: 700; font-size: 11px; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif; text-shadow: 0 1px 2px rgba(0,0,0,0.5); letter-spacing: 0.05em; }
+        .btn-draw-l { background: rgba(59,130,246,0.25); border: 1px solid rgba(59,130,246,0.4); }
+        .btn-draw-l:hover { background: rgba(59,130,246,0.5); }
+        .btn-draw-l.active { background: rgba(59,130,246,0.9); border-color: #93c5fd; box-shadow: 0 0 12px rgba(59,130,246,0.6); }
+        .btn-draw-s { background: rgba(34,197,94,0.25); border: 1px solid rgba(34,197,94,0.4); }
+        .btn-draw-s:hover { background: rgba(34,197,94,0.5); }
+        .btn-draw-s.active { background: rgba(34,197,94,0.9); border-color: #86efac; box-shadow: 0 0 12px rgba(34,197,94,0.6); }
+        .btn-draw-d { background: rgba(239,68,68,0.25); border: 1px solid rgba(239,68,68,0.4); }
+        .btn-draw-d:hover { background: rgba(239,68,68,0.5); }
+        .btn-draw-d.active { background: rgba(239,68,68,0.9); border-color: #fca5a5; box-shadow: 0 0 12px rgba(239,68,68,0.6); }
+        .btn-draw-c { background: rgba(100,116,139,0.3); border: 1px solid rgba(100,116,139,0.5); }
+        .btn-draw-c:hover { background: rgba(100,116,139,0.6); }
+        .btn-draw-c:active { background: rgba(100,116,139,0.9); }
+
+        /* Legend */
+        .legend-pill { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255,255,255,0.97); backdrop-filter: blur(20px); border-radius: 14px; padding: 10px 18px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 0 0 1px rgba(255,255,255,0.9); }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    </style>
+</head>
+
+<body>
+
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <div class="search-inner">
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:#f1f5f9;border-radius:10px;flex-shrink:0;">
+                <span style="font-size:9px;font-weight:800;color:#94a3b8;letter-spacing:0.12em;text-transform:uppercase;">Wilayah</span>
+                <select style="background:transparent;font-size:12px;font-weight:700;color:#1e293b;outline:none;cursor:pointer;border:none;">
+                    <option>DKI JAKARTA</option>
+                    <option>JAKARTA PUSAT</option>
+                    <option>JAKARTA SELATAN</option>
+                </select>
+            </div>
+            <input type="text" placeholder="Cari titik CCTV atau lokasi jalan..."
+                style="flex:1;background:transparent;font-size:13px;font-weight:500;color:#334155;outline:none;border:none;min-width:0;">
+            <button style="background:#2563eb;color:white;padding:10px;border-radius:10px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Brand -->
+    <div class="brand-pill">
+        <div style="display:flex;flex-direction:column;">
+            <span style="font-size:8px;font-weight:800;color:#1e40af;letter-spacing:0.2em;text-transform:uppercase;">Pemerintah Provinsi</span>
+            <span style="font-size:16px;font-weight:900;color:#0f172a;line-height:1.1;font-family:'Space Grotesk',sans-serif;">DKI JAKARTA</span>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend-pill">
+        <span style="font-size:9px;font-weight:800;color:#94a3b8;letter-spacing:0.1em;text-transform:uppercase;">Legenda</span>
+        <div style="display:flex;align-items:center;gap:6px;"><div class="legend-dot" style="background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.5);"></div><span style="font-size:10px;font-weight:700;color:#334155;">Parkir Liar</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><div class="legend-dot" style="background:#3b82f6;box-shadow:0 0 6px rgba(59,130,246,0.5);"></div><span style="font-size:10px;font-weight:700;color:#334155;">Busway Lane</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><div class="legend-dot" style="background:#f59e0b;box-shadow:0 0 6px rgba(245,158,11,0.5);"></div><span style="font-size:10px;font-weight:700;color:#334155;">Ngetem</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><div class="legend-dot" style="background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.5);"></div><span style="font-size:10px;font-weight:700;color:#334155;">Normal</span></div>
+    </div>
+
+    <!-- Hotspot Sidebar -->
+    <div id="hotspotSidebar">
+        <div class="sidebar-header">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <div>
+                    <div style="font-size:9px;font-weight:800;letter-spacing:0.18em;color:#94a3b8;text-transform:uppercase;margin-bottom:4px;">Real-time</div>
+                    <h2 style="font-size:15px;font-weight:800;color:#0f172a;font-family:'Space Grotesk',sans-serif;letter-spacing:-0.02em;">Hotspot Analysis</h2>
+                </div>
+                <div style="width:36px;height:36px;background:#fef2f2;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:18px;height:18px;" viewBox="0 0 20 20" fill="#ef4444">
+                        <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+            </div>
+            <div style="margin-bottom:14px;">
+                <div style="font-size:9px;font-weight:800;color:#cbd5e1;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Violation Type</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    <button class="filter-chip active" onclick="setFilter(this,'All')">All</button>
+                    <button class="filter-chip" onclick="setFilter(this,'Parkir Liar')">Parkir Liar</button>
+                    <button class="filter-chip" onclick="setFilter(this,'Busway Lane')">Busway Lane</button>
+                    <button class="filter-chip" onclick="setFilter(this,'Ngetem')">Ngetem</button>
+                </div>
+            </div>
+            <div>
+                <div style="font-size:9px;font-weight:800;color:#cbd5e1;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Time Range</div>
+                <div style="display:flex;gap:4px;background:#f1f5f9;padding:4px;border-radius:12px;">
+                    <button class="time-tab active" onclick="setTime(this)">Today</button>
+                    <button class="time-tab" onclick="setTime(this)">Week</button>
+                    <button class="time-tab" onclick="setTime(this)">Month</button>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-scroll">
+            <div style="font-size:9px;font-weight:800;color:#cbd5e1;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px;">Top Violation Hotspots</div>
+            <div id="hotspotList"></div>
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- CCTV Modal -->
+    <div id="cctvModal">
+        <button id="floatingAnalysisBtn" class="btn-analysis" onclick="toggleAnalysis()"
+            style="position:fixed;top:24px;right:24px;z-index:10001;">
+            <div class="icon-wrap">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                </svg>
+            </div>
+            <div class="label-wrap">
+                <span class="label-main">Analysis</span>
+                <span class="label-sub">Workspace</span>
+            </div>
+        </button>
+
+        <div class="modal-card">
+            <div style="padding:20px 28px;border-bottom:1px solid #f1f5f9;background:#fafafa;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <div style="width:44px;height:44px;background:#2563eb;border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,99,235,0.3);">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:22px;height:22px;" fill="none" viewBox="0 0 24 24" stroke="white">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 id="modalTitle" style="font-size:17px;font-weight:800;color:#0f172a;font-family:'Space Grotesk',sans-serif;letter-spacing:-0.02em;">Stream Camera</h2>
+                        <span id="modalLocation" style="font-size:12px;color:#94a3b8;font-weight:500;">Jl. Jenderal Sudirman, Jakarta</span>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="refreshStream()" style="width:40px;height:40px;border-radius:12px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#94a3b8;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                    </button>
+                    <button onclick="closeCctvModal()" style="width:40px;height:40px;border-radius:12px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#94a3b8;" onmouseover="this.style.background='#fef2f2';this.style.color='#ef4444'" onmouseout="this.style.background='transparent';this.style.color='#94a3b8'">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div style="flex:1;display:flex;overflow:hidden;min-height:0;">
+                <div style="width:100%;padding:24px;display:flex;flex-direction:column;min-height:0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-shrink:0;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="width:8px;height:8px;background:#ef4444;border-radius:50%;display:block;animation:pulse 1.5s infinite;"></span>
+                            <h3 style="font-size:15px;font-weight:700;color:#0f172a;">Live Streaming (API)</h3>
+                        </div>
+                        <span id="timestamp" style="font-size:10px;font-weight:700;color:#94a3b8;font-family:monospace;"></span>
+                    </div>
+                    <div style="flex:1;background:#000;border-radius:20px;overflow:hidden;position:relative;box-shadow:0 12px 40px rgba(0,0,0,0.3);min-height:0;">
+                        <img id="streamVideo" src="{{ url_for('video_feed') }}"
+                            style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;">
+                        <div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:10px;padding:10px;background:rgba(15,23,42,0.6);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.1);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+                            <button id="btnModeL" class="btn-draw btn-draw-l" onclick="setDrawMode('L')">L (Jalur Bus)</button>
+                            <button id="btnModeS" class="btn-draw btn-draw-s" onclick="setDrawMode('S')">S (Area Ngetem)</button>
+                            <button id="btnModeD" class="btn-draw btn-draw-d" onclick="setDrawMode('D')">D (Lampu Merah)</button>
+                            <button class="btn-draw btn-draw-c" onclick="clearDrawMode()">C (Hapus)</button>
+                        </div>
+                        <div style="position:absolute;inset:0;padding:14px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none;">
+                            <span id="videoOverlayTime" style="color:white;font-family:monospace;font-size:9px;letter-spacing:0.1em;background:rgba(0,0,0,0.5);align-self:flex-start;padding:4px 8px;border-radius:6px;"></span>
+                            <div style="display:flex;justify-content:space-between;align-items:flex-end;color:white;font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;">
+                                <span style="opacity:0.7;">DISKOMINFO KOTA MALANG</span>
+                                <span style="opacity:0.7;">JL. VETERAN DEPAN MATOS</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;flex-shrink:0;">
+                        <div style="padding:14px;background:#eff6ff;border-radius:14px;border:1px solid #dbeafe;">
+                            <p style="font-size:9px;color:#3b82f6;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Kepadatan</p>
+                            <p style="font-size:16px;font-weight:800;color:#1e3a8a;font-family:'Space Grotesk',sans-serif;">Sedang</p>
+                        </div>
+                        <div style="padding:14px;background:#f0fdf4;border-radius:14px;border:1px solid #dcfce7;">
+                            <p style="font-size:9px;color:#22c55e;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Status Alat</p>
+                            <p style="font-size:16px;font-weight:800;color:#14532d;font-family:'Space Grotesk',sans-serif;">Normal</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding:16px 28px;background:#fafafa;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;flex-shrink:0;">
+                <button onclick="closeCctvModal()" style="padding:12px 28px;background:#0f172a;color:white;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#0f172a'">Tutup Jendela</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Window -->
+    <div id="analysisWindow">
+        <div id="analysisHeader">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="display:flex;gap:6px;">
+                    <div class="win-dot" style="background:#ff5f56;cursor:pointer;" onclick="toggleAnalysis()"></div>
+                    <div class="win-dot" style="background:#ffbd2e;"></div>
+                    <div class="win-dot" style="background:#27c93f;"></div>
+                </div>
+                <span style="font-size:10px;font-weight:800;color:rgba(255,255,255,0.3);letter-spacing:0.18em;text-transform:uppercase;">Analytics Workspace</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:9px;color:rgba(255,255,255,0.25);font-weight:700;font-family:monospace;" id="winTimestamp"></span>
+                <button onclick="toggleAnalysis()" style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,0.05);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);" onmouseover="this.style.background='rgba(239,68,68,0.2)';this.style.color='#f87171'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.4)'">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:14px;height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="analysis-body">
+            <div>
+                <div class="section-label">
+                    <span style="background:linear-gradient(135deg,#7c3aed,#a855f7);padding:4px 8px;border-radius:6px;font-size:9px;font-weight:900;color:white;letter-spacing:0.05em;">AI</span>
+                    Predictive Insights
+                    <span style="font-size:8px;font-weight:800;color:#22c55e;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);padding:3px 8px;border-radius:100px;white-space:nowrap;margin-left:auto;">● Live</span>
+                </div>
+                <div id="aiInsightFeed" style="max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:rgba(139,92,246,0.3) transparent;"></div>
+            </div>
+            <div>
+                <div class="section-label">
+                    <span style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:4px 8px;border-radius:6px;font-size:9px;font-weight:900;color:white;letter-spacing:0.05em;">STAT</span>
+                    REAL-TIME TRAFFIC STATISTICS
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:20px;">
+                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+                        <span style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;line-height:1.2;">Pelanggaran<br>Jalur (L)</span>
+                        <span id="statBusLane" style="font-size:24px;font-weight:900;color:#f59e0b;font-family:'Space Grotesk',sans-serif;">0</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+                        <span style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;line-height:1.2;">Parkir/Lampu<br>Merah (D)</span>
+                        <span id="statIllegalStop" style="font-size:24px;font-weight:900;color:#ef4444;font-family:'Space Grotesk',sans-serif;">0</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+                        <span style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;line-height:1.2;">Drop-off<br>Ilegal (Luar S)</span>
+                        <span id="statIllegalDropoff" style="font-size:24px;font-weight:900;color:#f97316;font-family:'Space Grotesk',sans-serif;">0</span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="section-label">
+                    <span style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.2);padding:4px 8px;border-radius:6px;font-size:9px;font-weight:900;color:#4ade80;">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:10px;height:10px;display:inline;" viewBox="0 0 20 20" fill="#4ade80"><path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/></svg>
+                    </span>
+                    Suara Warga
+                </div>
+                <div id="citizenVoicesContainer" style="display:flex;flex-direction:column;gap:10px;">
+                    <div class="sentiment-card">
+                        <div class="avatar" style="background:linear-gradient(135deg,#2563eb,#3b82f6);color:white;">AS</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                <span style="font-size:11px;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.04em;">Andi Saputra</span>
+                                <span style="font-size:9px;color:rgba(255,255,255,0.25);font-weight:700;">5m ago</span>
+                            </div>
+                            <p style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.5;">"Hati-hati genangan air di titik ini setelah hujan tadi."</p>
+                        </div>
+                    </div>
+                    <div class="sentiment-card">
+                        <div class="avatar" style="background:linear-gradient(135deg,#059669,#10b981);color:white;">RM</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                <span style="font-size:11px;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.04em;">Rina M.</span>
+                                <span style="font-size:9px;color:rgba(255,255,255,0.25);font-weight:700;">1h ago</span>
+                            </div>
+                            <p style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.5;">"Sudah lancar, petugas sudah di lokasi melakukan penanganan."</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div style="padding-top:4px;">
+                <button onclick="downloadAnalysisCSV()" style="width:100%;padding:14px;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.15));border:1px solid rgba(139,92,246,0.3);color:white;border-radius:12px;font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;" onmouseover="this.style.background='linear-gradient(135deg,rgba(124,58,237,0.5),rgba(168,85,247,0.25))'" onmouseout="this.style.background='linear-gradient(135deg,rgba(124,58,237,0.3),rgba(168,85,247,0.15))'">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;" fill="none" viewBox="0 0 24 24" stroke="#4ade80">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                    </svg>
+                    Download CSV Report
+                </button>
+            </div>
+        </div>
+        <div class="win-resize-handle">
+            <svg xmlns="http://www.w3.org/2000/svg" style="width:14px;height:14px;opacity:0.3;" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <line x1="16" y1="8" x2="8" y2="16"/>
+                <line x1="20" y1="12" x2="12" y2="20"/>
+                <line x1="20" y1="16" x2="16" y2="20"/>
+            </svg>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ─── MAP ───────────────────────────────────────────────
+        const map = L.map('map', { zoomControl: false, attributionControl: false })
+            .setView([-6.2146, 106.8202], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 }).addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // ─── VIOLATION COLOR MAP ───────────────────────────────
+        const violationColors = {
+            'Parkir Liar':  { border: '#ef4444', glow: 'rgba(239,68,68,0.4)',  icon: '#ef4444' },
+            'Busway Lane':  { border: '#3b82f6', glow: 'rgba(59,130,246,0.4)', icon: '#3b82f6' },
+            'Ngetem':       { border: '#f59e0b', glow: 'rgba(245,158,11,0.4)', icon: '#f59e0b' },
+            'Normal':       { border: '#22c55e', glow: 'rgba(34,197,94,0.4)',  icon: '#22c55e' },
+        };
+
+        function getCamIcon(violationType) {
+            const c = violationColors[violationType] || violationColors['Normal'];
+            return L.divIcon({
+                html: `<div class="camera-marker" style="width:44px;height:44px;border:2.5px solid ${c.border};box-shadow:0 4px 16px ${c.glow},0 0 0 4px ${c.glow.replace('0.4','0.12')};">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:22px;height:22px;" viewBox="0 0 20 20" fill="${c.icon}">
+                        <path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+                    </svg></div>`,
+                className: '', iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -24]
+            });
+        }
+
+        // ─── 50 CAMERAS ───────────────────────────────────────
+        const cameras = [
+            // ── HOTSPOT LOCATIONS (matching sidebar data exactly) ──
+            { id:1,  kec:"JAKARTA SELATAN", lbl:"Jl. Gatot Subroto",          loc:"Jakarta Selatan",      coords:[-6.2297,106.8219], type:"Parkir Liar" },
+            { id:2,  kec:"JAKARTA PUSAT",   lbl:"Bundaran HI",                 loc:"Jl. MH Thamrin",       coords:[-6.1950,106.8231], type:"Busway Lane" },
+            { id:3,  kec:"JAKARTA SELATAN", lbl:"Jl. HR Rasuna Said",          loc:"Kuningan, Jak-Sel",    coords:[-6.2243,106.8350], type:"Parkir Liar" },
+            { id:4,  kec:"BEKASI",          lbl:"Cikarang Industrial Zone",    loc:"Cikarang, Bekasi",     coords:[-6.3519,107.1425], type:"Parkir Liar" },
+            { id:5,  kec:"BEKASI",          lbl:"Cikarang Dry Port",           loc:"Cikarang Utara",       coords:[-6.3290,107.1456], type:"Ngetem" },
+            { id:6,  kec:"BEKASI TIMUR",    lbl:"Bekasi Timur",                loc:"Jl. Juanda Bekasi",    coords:[-6.2349,107.0011], type:"Parkir Liar" },
+            { id:7,  kec:"JAKARTA PUSAT",   lbl:"Jl. Sudirman KM2",            loc:"Tanah Abang",          coords:[-6.2146,106.8202], type:"Busway Lane" },
+            { id:8,  kec:"JAKARTA PUSAT",   lbl:"Jl. MH Thamrin",              loc:"Bundaran HI",          coords:[-6.1866,106.8234], type:"Busway Lane" },
+
+            // ── ADDITIONAL 42 CAMERAS ──
+            { id:9,  kec:"JAKARTA PUSAT",   lbl:"Monas - Silang Barat",        loc:"Gambir, Jak-Pus",      coords:[-6.1749,106.8271], type:"Normal" },
+            { id:10, kec:"JAKARTA PUSAT",   lbl:"Jl. Veteran - Depan Istiqlal",loc:"Sawah Besar",          coords:[-6.1701,106.8317], type:"Parkir Liar" },
+            { id:11, kec:"JAKARTA BARAT",   lbl:"Jl. Daan Mogot KM 5",         loc:"Grogol, Jak-Bar",      coords:[-6.1660,106.7870], type:"Ngetem" },
+            { id:12, kec:"JAKARTA BARAT",   lbl:"Simpang Grogol",              loc:"S. Parman, Grogol",    coords:[-6.1715,106.7958], type:"Busway Lane" },
+            { id:13, kec:"JAKARTA UTARA",   lbl:"Jl. Yos Sudarso KM 3",        loc:"Penjaringan, Jak-Ut",  coords:[-6.1337,106.8603], type:"Parkir Liar" },
+            { id:14, kec:"JAKARTA UTARA",   lbl:"Pelabuhan Tanjung Priok",     loc:"Priok, Jak-Utara",     coords:[-6.1073,106.8726], type:"Ngetem" },
+            { id:15, kec:"JAKARTA UTARA",   lbl:"Jl. RE Martadinata",          loc:"Ancol, Jak-Utara",     coords:[-6.1244,106.8499], type:"Parkir Liar" },
+            { id:16, kec:"JAKARTA TIMUR",   lbl:"Jl. Ahmad Yani - Rawamangun", loc:"Pulogadung, Jak-Tim",  coords:[-6.1917,106.8864], type:"Busway Lane" },
+            { id:17, kec:"JAKARTA TIMUR",   lbl:"Terminal Pulo Gebang",        loc:"Cakung, Jak-Timur",    coords:[-6.1854,106.9479], type:"Ngetem" },
+            { id:18, kec:"JAKARTA TIMUR",   lbl:"Jl. Bekasi Raya KM 18",       loc:"Cakung, Jak-Timur",    coords:[-6.1952,106.9603], type:"Parkir Liar" },
+            { id:19, kec:"JAKARTA SELATAN", lbl:"Jl. Casablanca - Tebet",      loc:"Tebet, Jak-Sel",       coords:[-6.2391,106.8484], type:"Parkir Liar" },
+            { id:20, kec:"JAKARTA SELATAN", lbl:"Jl. TB Simatupang",           loc:"Pasar Minggu, Jak-Sel", coords:[-6.2990,106.8197], type:"Busway Lane" },
+            { id:21, kec:"JAKARTA SELATAN", lbl:"Pondok Indah - RSPI",         loc:"Pesanggrahan, Jak-Sel", coords:[-6.2660,106.7847], type:"Normal" },
+            { id:22, kec:"JAKARTA SELATAN", lbl:"Jl. Fatmawati Raya",          loc:"Cilandak, Jak-Sel",    coords:[-6.2873,106.7967], type:"Parkir Liar" },
+            { id:23, kec:"JAKARTA SELATAN", lbl:"Jl. Ampera Raya",             loc:"Pasar Minggu",          coords:[-6.2741,106.8308], type:"Ngetem" },
+            { id:24, kec:"JAKARTA BARAT",   lbl:"Mal Central Park",            loc:"Tanjung Duren, Jak-Bar",coords:[-6.1777,106.7908], type:"Parkir Liar" },
+            { id:25, kec:"JAKARTA BARAT",   lbl:"Jl. Puri Kencana",            loc:"Kembangan, Jak-Bar",   coords:[-6.1952,106.7567], type:"Ngetem" },
+            { id:26, kec:"JAKARTA BARAT",   lbl:"Simpang Kebon Jeruk",         loc:"Kebon Jeruk, Jak-Bar",  coords:[-6.2001,106.7733], type:"Busway Lane" },
+            { id:27, kec:"JAKARTA PUSAT",   lbl:"Jl. Kramat Raya",             loc:"Senen, Jak-Pusat",     coords:[-6.1831,106.8468], type:"Parkir Liar" },
+            { id:28, kec:"JAKARTA PUSAT",   lbl:"Simpang Senen",               loc:"Senen, Jak-Pusat",     coords:[-6.1761,106.8450], type:"Ngetem" },
+            { id:29, kec:"JAKARTA PUSAT",   lbl:"Jl. Gunung Sahari",           loc:"Sawah Besar, Jak-Pus", coords:[-6.1600,106.8376], type:"Busway Lane" },
+            { id:30, kec:"JAKARTA PUSAT",   lbl:"Jl. Mangga Besar",            loc:"Taman Sari, Jak-Bar",  coords:[-6.1568,106.8228], type:"Parkir Liar" },
+            { id:31, kec:"JAKARTA SELATAN", lbl:"Fly Over Kuningan",           loc:"Kuningan, Jak-Sel",    coords:[-6.2273,106.8318], type:"Busway Lane" },
+            { id:32, kec:"JAKARTA SELATAN", lbl:"Simpang Pancoran",            loc:"Pancoran, Jak-Sel",    coords:[-6.2494,106.8454], type:"Parkir Liar" },
+            { id:33, kec:"JAKARTA SELATAN", lbl:"Jl. Ragunan",                 loc:"Pasar Minggu",          coords:[-6.3059,106.8145], type:"Normal" },
+            { id:34, kec:"JAKARTA TIMUR",   lbl:"Fly Over Cilincing",          loc:"Cilincing, Jak-Tim",   coords:[-6.1275,106.9179], type:"Parkir Liar" },
+            { id:35, kec:"BEKASI",          lbl:"Jl. Ahmad Yani Bekasi",       loc:"Bekasi Selatan",        coords:[-6.2560,106.9984], type:"Busway Lane" },
+            { id:36, kec:"BEKASI",          lbl:"Terminal Bekasi",             loc:"Bekasi Kota",           coords:[-6.2405,106.9896], type:"Ngetem" },
+            { id:37, kec:"BEKASI",          lbl:"Jl. KH Noer Ali",             loc:"Kalimalang, Bekasi",   coords:[-6.2522,106.9706], type:"Parkir Liar" },
+            { id:38, kec:"BEKASI",          lbl:"Simpang Kalimalang",          loc:"Bekasi Barat",          coords:[-6.2442,106.9637], type:"Busway Lane" },
+            { id:39, kec:"JAKARTA TIMUR",   lbl:"Jl. Kalimalang KM 2",         loc:"Duren Sawit, Jak-Tim", coords:[-6.2349,106.9383], type:"Parkir Liar" },
+            { id:40, kec:"JAKARTA TIMUR",   lbl:"Simpang Pondok Kopi",         loc:"Duren Sawit, Jak-Tim", coords:[-6.2263,106.9207], type:"Ngetem" },
+            { id:41, kec:"JAKARTA TIMUR",   lbl:"Jl. Matraman Raya",           loc:"Matraman, Jak-Tim",    coords:[-6.2012,106.8604], type:"Parkir Liar" },
+            { id:42, kec:"JAKARTA TIMUR",   lbl:"Simpang Klender",             loc:"Klender, Duren Sawit", coords:[-6.2160,106.9007], type:"Busway Lane" },
+            { id:43, kec:"JAKARTA SELATAN", lbl:"Halte Busway Blok M",         loc:"Kebayoran Baru",        coords:[-6.2444,106.7999], type:"Busway Lane" },
+            { id:44, kec:"JAKARTA SELATAN", lbl:"Simpang Blok M",              loc:"Kebayoran Baru",        coords:[-6.2452,106.7973], type:"Ngetem" },
+            { id:45, kec:"JAKARTA SELATAN", lbl:"Jl. Wolter Monginsidi",       loc:"Kebayoran Baru",        coords:[-6.2378,106.7961], type:"Normal" },
+            { id:46, kec:"JAKARTA BARAT",   lbl:"Jl. Kyai Tapa",               loc:"Tomang, Jak-Bar",      coords:[-6.1821,106.7967], type:"Parkir Liar" },
+            { id:47, kec:"JAKARTA UTARA",   lbl:"Jl. Pluit Raya",              loc:"Pluit, Penjaringan",   coords:[-6.1168,106.7938], type:"Parkir Liar" },
+            { id:48, kec:"JAKARTA UTARA",   lbl:"Simpang Semper",              loc:"Semper, Cilincing",    coords:[-6.1220,106.9015], type:"Normal" },
+            { id:49, kec:"BEKASI",          lbl:"Toll Bekasi Timur KM 25",     loc:"Bekasi Timur",          coords:[-6.2600,107.0400], type:"Busway Lane" },
+            { id:50, kec:"BEKASI",          lbl:"Jl. Sultan Agung Bekasi",     loc:"Bekasi Barat",          coords:[-6.2480,106.9860], type:"Ngetem" },
+        ];
+
+        // Store markers for fly-to
+        const markerMap = {};
+
+        cameras.forEach(c => {
+            const mk = L.marker(c.coords, { icon: getCamIcon(c.type) }).addTo(map);
+            markerMap[c.lbl] = { marker: mk, coords: c.coords };
+
+            const col = violationColors[c.type] || violationColors['Normal'];
+            mk.bindPopup(`
+                <div style="padding:20px;font-family:'DM Sans',sans-serif;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <span style="font-size:9px;font-weight:800;color:#94a3b8;letter-spacing:0.15em;text-transform:uppercase;">${c.kec}</span>
+                        <span style="font-size:9px;font-weight:800;color:${col.icon};background:${col.icon}18;padding:2px 8px;border-radius:100px;border:1px solid ${col.icon}40;">${c.type}</span>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <div style="font-size:9px;font-weight:800;color:#cbd5e1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">Label</div>
+                        <div style="font-size:14px;font-weight:700;color:#0f172a;">${c.lbl}</div>
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <div style="font-size:9px;font-weight:800;color:#cbd5e1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3px;">Lokasi</div>
+                        <div style="font-size:14px;font-weight:700;color:#0f172a;">${c.loc}</div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="openCctvModal('${c.lbl}','${c.loc}')"
+                            style="flex:2;background:#2563eb;color:white;border:none;border-radius:12px;padding:12px;font-size:11px;font-weight:800;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;">
+                            Lihat Detail
+                        </button>
+                        <button onclick="map.closePopup()"
+                            style="flex:1;background:#fef2f2;color:#ef4444;border:none;border-radius:12px;padding:12px;font-size:11px;font-weight:800;cursor:pointer;text-transform:uppercase;">
+                            Tutup
+                        </button>
+                    </div>
+                </div>`, { className: 'custom-popup', closeButton: false });
+        });
+
+        // ─── HOTSPOT DATA ──────────────────────────────────────
+        const hotspots = [
+            { rank:1, name:"Jl. Gatot Subroto",       count:87, type:"Parkir Liar",  color:"#ef4444" },
+            { rank:2, name:"Bundaran HI",              count:71, type:"Busway Lane",  color:"#3b82f6" },
+            { rank:3, name:"Jl. HR Rasuna Said",       count:65, type:"Parkir Liar",  color:"#ef4444" },
+            { rank:4, name:"Cikarang Industrial Zone", count:58, type:"Parkir Liar",  color:"#ef4444" },
+            { rank:5, name:"Cikarang Dry Port",        count:44, type:"Ngetem",       color:"#f59e0b" },
+            { rank:6, name:"Bekasi Timur",             count:39, type:"Parkir Liar",  color:"#ef4444" },
+            { rank:7, name:"Jl. Sudirman KM2",         count:35, type:"Busway Lane",  color:"#3b82f6" },
+            { rank:8, name:"Jl. MH Thamrin",           count:29, type:"Busway Lane",  color:"#3b82f6" },
+        ];
+
+        let activeFilter = 'All';
+
+        function flyToCamera(name) {
+            const entry = markerMap[name];
+            if (!entry) return;
+            map.flyTo(entry.coords, 17, { animate: true, duration: 1.2 });
+            setTimeout(() => { entry.marker.openPopup(); }, 1300);
+        }
+
+        function renderHotspots() {
+            const list = document.getElementById('hotspotList');
+            const filtered = activeFilter === 'All' ? hotspots : hotspots.filter(h => h.type === activeFilter);
+            list.innerHTML = filtered.map(h => `
+                <div class="hotspot-item" onclick="flyToCamera('${h.name}')" title="Klik untuk zoom ke CCTV">
+                    <span class="rank-num">#${h.rank}</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:12px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.name}</div>
+                        <div style="font-size:10px;color:#94a3b8;font-weight:600;margin-top:2px;">
+                            ${h.count} violations · <span style="color:${h.color};font-weight:700;">${h.type}</span>
+                        </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                        <div style="width:6px;height:6px;border-radius:50%;background:${h.color};"></div>
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:10px;height:10px;color:#cbd5e1;" fill="none" viewBox="0 0 24 24" stroke="#cbd5e1" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </div>
+                </div>
+            `).join('');
+        }
+        renderHotspots();
+
+        function setFilter(btn, filterVal) {
+            document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeFilter = filterVal;
+            renderHotspots();
+        }
+
+        function setTime(btn) {
+            document.querySelectorAll('.time-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // ─── DRAGGABLE ANALYSIS WINDOW ─────────────────────────
+        const win = document.getElementById('analysisWindow');
+        const hdr = document.getElementById('analysisHeader');
+        let dragging = false, ox = 0, oy = 0;
+
+        hdr.addEventListener('mousedown', e => {
+            if (e.target.closest('button')) return;
+            dragging = true; ox = e.clientX - win.offsetLeft; oy = e.clientY - win.offsetTop;
+            win.style.transition = 'none'; document.body.style.userSelect = 'none';
+        });
+        document.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            let nx = Math.max(0, Math.min(e.clientX - ox, window.innerWidth - win.offsetWidth));
+            let ny = Math.max(0, Math.min(e.clientY - oy, window.innerHeight - win.offsetHeight));
+            win.style.left = nx + 'px'; win.style.top = ny + 'px';
+        });
+        document.addEventListener('mouseup', () => { dragging = false; document.body.style.userSelect = ''; });
+
+        function toggleAnalysis() {
+            const visible = win.classList.contains('visible');
+            if (visible) { win.classList.remove('visible'); }
+            else {
+                win.classList.add('visible');
+                if (!win.style.top) {
+                    win.style.left = Math.max(0,(window.innerWidth-440)/2) + 'px';
+                    win.style.top  = Math.max(0,(window.innerHeight-560)/2) + 'px';
+                }
+            }
+        }
+
+        function openCctvModal(title, loc) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalLocation').innerText = loc;
+            document.getElementById('cctvModal').classList.add('open');
+            document.getElementById('hotspotSidebar').classList.add('hidden-sidebar');
+            map.closePopup();
+        }
+
+        function closeCctvModal() {
+            document.getElementById('cctvModal').classList.remove('open');
+            win.classList.remove('visible');
+            document.getElementById('hotspotSidebar').classList.remove('hidden-sidebar');
+        }
+
+        function refreshStream() {
+            const v = document.getElementById('streamVideo');
+            v.currentTime = 0; v.play && v.play();
+        }
+
+        function downloadAnalysisCSV() {
+            const rows = [
+                ["Section","Data","Source"],
+                ["AI Predictive Insight","Diprediksi penumpukan kendaraan di lajur kiri. Akurasi 94.2%","AI System"],
+                ["Suara Warga","Hati-hati genangan air di titik ini setelah hujan tadi.","Andi Saputra"],
+                ["Suara Warga","Sudah lancar, petugas sudah di lokasi melakukan penanganan.","Rina M."],
+                ["Location",document.getElementById('modalLocation').innerText,"System Meta"]
+            ];
+            const csv = "data:text/csv;charset=utf-8," + rows.map(r => r.join(",")).join("\n");
+            const a = document.createElement("a"); a.href = encodeURI(csv);
+            a.download = `Analysis_${document.getElementById('modalTitle').innerText.replace(/\s+/g,'_')}.csv`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        // ─── CLOCK ─────────────────────────────────────────────
+        function updateClock() {
+            const now = new Date(), pad = n => n.toString().padStart(2,'0');
+            const s = `${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            const el = document.getElementById('timestamp'); if(el) el.innerText = s;
+            const ov = document.getElementById('videoOverlayTime'); if(ov) ov.innerText = s;
+            const wt = document.getElementById('winTimestamp'); if(wt) wt.innerText = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        }
+        setInterval(updateClock, 1000); updateClock();
+        window.addEventListener('keydown', e => { if(e.key==='Escape') closeCctvModal(); });
+
+        // ─── DRAW ON STREAM ────────────────────────────────────
+        const streamImg = document.getElementById('streamVideo');
+        streamImg.addEventListener('click', function(e) {
+            const rect = streamImg.getBoundingClientRect();
+            fetch('/add_point', { method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ x:(e.clientX-rect.left)/rect.width, y:(e.clientY-rect.top)/rect.height }) });
+        });
+
+        function setDrawMode(mode) {
+            document.querySelectorAll('.btn-draw').forEach(btn => btn.classList.remove('active'));
+            if(mode==='L') document.getElementById('btnModeL').classList.add('active');
+            if(mode==='S') document.getElementById('btnModeS').classList.add('active');
+            if(mode==='D') document.getElementById('btnModeD').classList.add('active');
+            fetch('/set_mode', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({mode}) });
+        }
+        function clearDrawMode() {
+            document.querySelectorAll('.btn-draw').forEach(btn => btn.classList.remove('active'));
+            fetch('/clear_mode', { method:'POST' });
+        }
+
+        // ─── ANIMATIONS ────────────────────────────────────────
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+            @keyframes fadeSlideIn { from{opacity:0;transform:translateY(-8px);} to{opacity:1;transform:translateY(0);} }
+        `;
+        document.head.appendChild(style);
+
+        // ─── AUTO-UPDATE INSIGHTS ──────────────────────────────
+        let lastInsightMsg = '';
+        function fetchInsights() {
+            if (!document.getElementById('analysisWindow').classList.contains('visible')) return;
+            fetch('/api/insights').then(r => r.json()).then(data => {
+                const feed = document.getElementById('aiInsightFeed');
+                if (data.ai_insight && data.ai_insight !== lastInsightMsg) {
+                    lastInsightMsg = data.ai_insight;
+                    const now = new Date(), timeStr = now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+                    const accVal = data.ai_accuracy || 0;
+                    feed.insertAdjacentHTML('afterbegin', `
+                    <div class="ai-card" style="animation:fadeSlideIn 0.4s ease;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:8px;font-weight:800;color:rgba(255,255,255,0.25);letter-spacing:0.1em;text-transform:uppercase;font-family:monospace;">${timeStr}</span>
+                            <span style="font-size:8px;font-weight:700;color:#a855f7;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.2);padding:2px 8px;border-radius:100px;">NEW</span>
+                        </div>
+                        <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;font-style:italic;margin-bottom:8px;">"${data.ai_insight}"</p>
+                        <div style="padding-top:10px;border-top:1px solid rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:space-between;">
+                            <span style="font-size:9px;color:rgba(255,255,255,0.3);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">Tingkat Akurasi</span>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div style="width:80px;height:4px;background:rgba(255,255,255,0.08);border-radius:100px;overflow:hidden;">
+                                    <div style="width:${accVal}%;height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:100px;"></div>
+                                </div>
+                                <span style="font-size:14px;font-weight:900;color:#a855f7;font-family:'Space Grotesk',sans-serif;">${accVal}%</span>
+                            </div>
+                        </div>
+                    </div>`);
+                    feed.querySelectorAll('.ai-card').forEach((card,i) => { if(i>0){const b=card.querySelector('span[style*="NEW"]');if(b)b.remove();} });
+                    while(feed.children.length>20) feed.removeChild(feed.lastChild);
+                }
+                if(data.stats) {
+                    document.getElementById('statBusLane').innerText = data.stats.bus_lane || 0;
+                    document.getElementById('statIllegalStop').innerText = data.stats.illegal_stop || 0;
+                    document.getElementById('statIllegalDropoff').innerText = data.stats.suspicious_dropoff || 0;
+                }
+                const container = document.getElementById('citizenVoicesContainer');
+                const colorMap = { red:'linear-gradient(135deg,#dc2626,#ef4444)', orange:'linear-gradient(135deg,#d97706,#f59e0b)', blue:'linear-gradient(135deg,#2563eb,#3b82f6)', green:'linear-gradient(135deg,#059669,#10b981)' };
+                container.innerHTML = data.sentiments.map(s => `
+                    <div class="sentiment-card">
+                        <div class="avatar" style="background:${colorMap[s.warna]||colorMap.blue};color:white;">${s.inisial}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                <span style="font-size:11px;font-weight:800;color:white;text-transform:uppercase;letter-spacing:0.04em;">${s.nama}</span>
+                                <span style="font-size:9px;color:rgba(255,255,255,0.25);font-weight:700;">${s.waktu}</span>
+                            </div>
+                            <p style="font-size:12px;color:rgba(255,255,255,0.55);line-height:1.5;">"${s.pesan}"</p>
+                        </div>
+                    </div>`).join('');
+            }).catch(err => console.error(err));
+        }
+        setInterval(fetchInsights, 5000);
+        document.getElementById('floatingAnalysisBtn').addEventListener('click', fetchInsights);
+    </script>
+</body>
+</html>

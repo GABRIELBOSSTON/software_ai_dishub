@@ -21,10 +21,8 @@ current_key = 'L'
 timers = {}
 frame_width, frame_height = 1280, 720
 
-# Saklar Utama AI (Default: OFF untuk menghemat server)
 ai_enabled = False 
 
-# Counter Pelanggaran Real-time
 violation_stats = {
     'bus_lane': 0,
     'illegal_stop': 0,
@@ -32,7 +30,6 @@ violation_stats = {
 }
 logged_ids = set() 
 
-# Sistem Audit Log Terminal
 ai_logs = []
 MAX_LOGS = 100 
 
@@ -49,7 +46,6 @@ def add_system_log(message, level="INFO"):
 # ==========================================
 @app.route('/toggle_ai', methods=['POST'])
 def toggle_ai():
-    """Mengaktifkan/Mematikan mesin inferensi YOLO"""
     global ai_enabled, timers
     data = request.json
     ai_enabled = data['status']
@@ -87,12 +83,14 @@ def clear_mode():
 
 @app.route('/api/insights')
 def api_insights():
-    global violation_stats, timers
+    global violation_stats, timers, ai_logs
+    
+    # Hitung kepadatan rata-rata
     active_vehicles = len(timers)
     density = min(100, (active_vehicles / 15) * 100)
     
-    total_v = sum(violation_stats.values())
-    insight_text, accuracy = get_ai_prediction(total_v, density, 'arterial')
+    # Mengirim dictionary violation_stats dan list ai_logs ke insight_engine
+    insight_text, accuracy = get_ai_prediction(violation_stats, density, ai_logs)
     
     return jsonify({
         "ai_insight": insight_text,
@@ -141,6 +139,18 @@ def generate_frames():
         if res_human[0].boxes.xyxy is not None:
             human_coords = res_human[0].boxes.xyxy.cpu().numpy()
 
+        # --- BUAT MASKING PIXEL UNTUK DETEKSI AKURAT ---
+        mask_L = np.zeros((frame_height, frame_width), dtype=np.uint8)
+        mask_S = np.zeros((frame_height, frame_width), dtype=np.uint8)
+        mask_D = np.zeros((frame_height, frame_width), dtype=np.uint8)
+
+        if len(polygons['L']) > 2:
+            cv2.fillPoly(mask_L, [np.array(polygons['L'], np.int32)], 255)
+        if len(polygons['S']) > 2:
+            cv2.fillPoly(mask_S, [np.array(polygons['S'], np.int32)], 255)
+        if len(polygons['D']) > 2:
+            cv2.fillPoly(mask_D, [np.array(polygons['D'], np.int32)], 255)
+
         if res_traffic[0].boxes.id is not None:
             boxes = res_traffic[0].boxes.xyxy.cpu().numpy()
             clss = res_traffic[0].boxes.cls.cpu().numpy()
@@ -149,14 +159,26 @@ def generate_frames():
             for box, cls, id in zip(boxes, clss, ids):
                 label = model_traffic.names[int(cls)]
                 
-                # Gunakan titik tengah-bawah (ban kendaraan) untuk akurasi poligon yang lebih baik
-                x_c = int((box[0] + box[2]) / 2)
-                y_b = int(box[3])
+                # Cegah koordinat keluar dari batas layar
+                x1, y1 = max(0, int(box[0])), max(0, int(box[1]))
+                x2, y2 = min(frame_width, int(box[2])), min(frame_height, int(box[3]))
                 
-                # Cek presisi posisi kendaraan di dalam masing-masing zona
-                in_l = len(polygons['L']) > 2 and cv2.pointPolygonTest(np.array(polygons['L']), (x_c, y_b), False) >= 0
-                in_s = len(polygons['S']) > 2 and cv2.pointPolygonTest(np.array(polygons['S']), (x_c, y_b), False) >= 0
-                in_d = len(polygons['D']) > 2 and cv2.pointPolygonTest(np.array(polygons['D']), (x_c, y_b), False) >= 0
+                bbox_area = (x2 - x1) * (y2 - y1)
+                
+                in_l, in_s, in_d = False, False, False
+                
+                # Cek apakah 5% luas kendaraan memotong poligon
+                if bbox_area > 0:
+                    if len(polygons['L']) > 2:
+                        in_l = (cv2.countNonZero(mask_L[y1:y2, x1:x2]) / bbox_area) >= 0.05
+                    if len(polygons['S']) > 2:
+                        in_s = (cv2.countNonZero(mask_S[y1:y2, x1:x2]) / bbox_area) >= 0.05
+                    if len(polygons['D']) > 2:
+                        in_d = (cv2.countNonZero(mask_D[y1:y2, x1:x2]) / bbox_area) >= 0.05
+
+                # Titik untuk meletakkan teks peringatan
+                x_c = int((x1 + x2) / 2)
+                y_b = y2
 
                 if id not in timers:
                     timers[id] = {'start': time.time()}
@@ -165,32 +187,31 @@ def generate_frames():
                 elapsed = time.time() - timers[id]['start']
 
                 # --- RULE L (Bus Lane) ---
-                # Hanya Bus yang boleh di jalur ini. Jika motor/mobil masuk, pelanggaran!
+                # Semua kendaraan selain Bus akan KENA TILANG jika masuk jalur L
                 if in_l:
                     if label != 'Bus': 
-                        cv2.putText(annotated_frame, "LANE VIOLATION!", (x_c, y_b-10), 0, 0.6, (0,0,255), 2)
+                        cv2.putText(annotated_frame, "LANE VIOLATION!", (x_c-30, y_b-10), 0, 0.6, (0,0,255), 2)
                         if f"{id}_L" not in logged_ids:
                             violation_stats['bus_lane'] += 1
                             logged_ids.add(f"{id}_L")
                             add_system_log(f"PELANGGARAN JALUR! ID:{int(id)} ({label}) masuk area Busway.", "ALERT")
 
                 # --- RULE D (Traffic Light / Long Stop) ---
-                # Jika berada di area D (Lampu merah) lebih dari 60 detik
-                if in_d and elapsed > 60:
+                # Diberikan waktu aman selama 180 detik (3 menit) untuk antrean lampu merah
+                if in_d and elapsed > 180: 
                     cv2.putText(annotated_frame, "ILLEGAL PARK/STOP!", (int(box[0]), int(box[3])+20), 0, 0.6, (0,0,255), 2)
                     if f"{id}_D" not in logged_ids:
                         violation_stats['illegal_stop'] += 1
                         logged_ids.add(f"{id}_D")
-                        add_system_log(f"PARKIR LIAR! ID:{int(id)} ({label}) menetap > 60 detik di area D.", "ALERT")
+                        add_system_log(f"PARKIR LIAR! ID:{int(id)} ({label}) menetap > 3 menit di area D.", "ALERT")
 
                 # --- RULE S (Safe Drop-off Zone) ---
-                # Peringatan hanya jika: Kendaraan BUKAN motor, dan berada di LUAR zona aman (S)
+                # Hanya curigai Mobil/Truk/Auto. Motor ("Two Wheeler") AMAN!
                 if not in_s and label != 'Two Wheeler':
                     for h_box in human_coords:
                         h_x_c = (h_box[0] + h_box[2]) / 2
                         h_y_b = h_box[3]
                         
-                        # Hitung jarak ban kendaraan ke kaki manusia
                         dist = np.linalg.norm(np.array([x_c, y_b]) - np.array([h_x_c, h_y_b]))
                         
                         if dist < 85: 

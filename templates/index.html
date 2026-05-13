@@ -604,6 +604,27 @@
             border-color: #58a6ff;
             color: #58a6ff;
         }
+
+        .log-line.highlighted {
+            background: rgba(255, 213, 0, 0.2);
+            border-left: 2px solid #ffd500;
+            padding-left: 6px;
+            transition: background 0.3s;
+        }
+        #logSearch {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px;
+            color: #c9d1d9;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            padding: 3px 8px;
+            outline: none;
+            width: 140px;
+            transition: border-color 0.2s;
+        }
+        #logSearch:focus { border-color: #58a6ff; }
+        #logSearch.not-found { border-color: #f85149; }
     </style>
 </head>
 
@@ -864,6 +885,36 @@
         </div>
     </div>
 
+    <div id="evidenceModal" style="position:fixed;inset:0;z-index:9999;background:rgba(5,5,15,0.85);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;padding:16px;">
+        <div class="modal-card" style="max-width:700px;height:80vh;">
+            <div style="padding:20px 28px;border-bottom:1px solid #f1f5f9;background:#fafafa;display:flex;justify-content:space-between;align-items:center;">
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <div style="width:44px;height:44px;background:#ef4444;border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(239,68,68,0.3);">
+                        📸
+                    </div>
+                    <div>
+                        <h2 style="font-size:17px;font-weight:800;color:#0f172a;font-family:'Space Grotesk',sans-serif;letter-spacing:-0.02em;">Galeri Bukti Otentik</h2>
+                        <span style="font-size:12px;color:#94a3b8;font-weight:500;">Screenshot Pelanggaran Terekam</span>
+                    </div>
+                </div>
+                <button onclick="closeEvidenceGallery()" style="width:40px;height:40px;border-radius:12px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#94a3b8;" onmouseover="this.style.background='#fef2f2';this.style.color='#ef4444'" onmouseout="this.style.background='transparent';this.style.color='#94a3b8'">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <div style="flex:1;overflow-y:auto;padding:24px;background:#f8fafc;">
+                <div id="evidenceGrid" style="display:grid;grid-template-columns:repeat(2, 1fr);gap:16px;">
+                    <!-- Images will be injected here -->
+                </div>
+            </div>
+
+            <div style="padding:16px 28px;background:#fafafa;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:12px;">
+                <button onclick="loadEvidencePhotos()" style="padding:10px 20px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">Refresh Data</button>
+                <button onclick="closeEvidenceGallery()" style="padding:10px 20px;background:#0f172a;color:white;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='#0f172a'">Tutup</button>
+            </div>
+        </div>
+    </div>
+
     <div id="analysisWindow">
         <div id="analysisHeader">
             <div style="display:flex;align-items:center;gap:10px;">
@@ -985,9 +1036,19 @@
             </div>
 
             <div class="audit-terminal">
-                <div class="terminal-header">
-                    <span>>_ AI_VISION_AUDIT_LOGS</span>
-                    <div class="blinking-cursor"></div>
+                <div class="terminal-header" style="justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:5px;">
+                        <span>>_ AI_VISION_AUDIT_LOGS</span>
+                        <div class="blinking-cursor"></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <input type="text" id="logSearch" placeholder="Cari log... (Enter)" 
+                               onkeydown="if(event.key==='Enter') jumpToLog()">
+                        <button onclick="jumpToLog()" style="background:rgba(88,166,255,0.15);border:1px solid rgba(88,166,255,0.3);
+                                color:#58a6ff;border-radius:4px;padding:3px 8px;font-size:10px;cursor:pointer;">⌕</button>
+                        <button onclick="clearLogSearch()" style="background:transparent;border:none;
+                                color:rgba(255,255,255,0.3);font-size:11px;cursor:pointer;" title="Clear search">✕</button>
+                    </div>
                 </div>
                 <div class="terminal-body" id="log-container">
                 </div>
@@ -998,6 +1059,10 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Export Terminal Data (.CSV)
+            </button>
+            
+            <button onclick="openEvidenceGallery()" class="btn-download-csv" style="border-color: rgba(239, 68, 68, 0.4); color: #ef4444; background: rgba(239, 68, 68, 0.05);" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)';this.style.borderColor='#ef4444';" onmouseout="this.style.background='rgba(239, 68, 68, 0.05)';this.style.borderColor='rgba(239, 68, 68, 0.4)';">
+                📸 Lihat Galeri Bukti Pelanggaran
             </button>
 
         </div>
@@ -1349,6 +1414,44 @@
         }
         setInterval(fetchInsights, 5000);
 
+        let isSearchActive = false;
+        let searchMatchIndex = 0; 
+
+        function jumpToLog() {
+            const keyword = document.getElementById('logSearch').value.trim().toLowerCase();
+            if (!keyword) return;
+            const container = document.getElementById('log-container');
+            const allLines = container.querySelectorAll('.log-line');
+            allLines.forEach(l => l.classList.remove('highlighted'));
+            const matches = [...allLines].filter(l => l.textContent.toLowerCase().includes(keyword));
+            const searchInput = document.getElementById('logSearch');
+
+            if (matches.length === 0) {
+                searchInput.classList.add('not-found');
+                setTimeout(() => searchInput.classList.remove('not-found'), 1500);
+                isSearchActive = false;
+                return;
+            }
+            searchInput.classList.remove('not-found');
+            if (searchMatchIndex >= matches.length) searchMatchIndex = 0;
+            const target = matches[searchMatchIndex];
+            searchMatchIndex++;
+
+            target.classList.add('highlighted');
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            isSearchActive = true; 
+            setTimeout(() => target.classList.remove('highlighted'), 2500);
+        }
+
+        function clearLogSearch() {
+            document.getElementById('logSearch').value = '';
+            document.getElementById('logSearch').classList.remove('not-found');
+            searchMatchIndex = 0;
+            isSearchActive = false; 
+            const container = document.getElementById('log-container');
+            container.scrollTop = container.scrollHeight;
+        }
+
         // ─── SYSTEM AUDIT TERMINAL AUTO-FETCH ──────────────────
         function fetchSystemLogs() {
             if (!document.getElementById('analysisWindow').classList.contains('visible')) return;
@@ -1359,26 +1462,24 @@
                     const container = document.getElementById('log-container');
                     if (!container) return;
 
-                    let isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 10;
+                    // FREEZE TERMINAL: Jika sedang search, jangan render ulang isi container
+                    if (isSearchActive) return; 
+
+                    let isScrolledToBottom = (container.scrollHeight - container.clientHeight <= container.scrollTop + 10);
 
                     container.innerHTML = '';
-
                     data.logs.forEach(log => {
                         let div = document.createElement('div');
                         div.className = 'log-line';
-
                         if (log.includes('[SCAN]')) div.classList.add('log-level-SCAN');
                         else if (log.includes('[ALERT]')) div.classList.add('log-level-ALERT');
                         else if (log.includes('[SYSTEM]')) div.classList.add('log-level-SYSTEM');
                         else div.classList.add('log-level-INFO');
-
                         div.textContent = log;
                         container.appendChild(div);
                     });
 
-                    if (isScrolledToBottom) {
-                        container.scrollTop = container.scrollHeight;
-                    }
+                    if (isScrolledToBottom) container.scrollTop = container.scrollHeight;
                 })
                 .catch(err => console.error(err));
         }
@@ -1428,7 +1529,48 @@
                 .catch(err => console.error("Error mendownload CSV:", err));
         }
 
+        // ─── FUNGSI GALERI BUKTI ──────────────────────────────
+        function openEvidenceGallery() {
+            document.getElementById('evidenceModal').style.display = 'flex';
+            loadEvidencePhotos();
+        }
+
+        function closeEvidenceGallery() {
+            document.getElementById('evidenceModal').style.display = 'none';
+        }
+
+        function loadEvidencePhotos() {
+            const grid = document.getElementById('evidenceGrid');
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px;font-weight:500;">Memuat data...</div>';
+            
+            fetch('/api/evidence')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data || data.length === 0) {
+                        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8;font-size:14px;font-weight:500;">Belum ada bukti terekam</div>';
+                        return;
+                    }
+                    
+                    grid.innerHTML = data.map(item => `
+                        <div style="background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);border:1px solid #f1f5f9;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'" onclick="window.open('${item.url}', '_blank')">
+                            <div style="width:100%;padding-bottom:56.25%;position:relative;background:#000;">
+                                <img src="${item.url}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;" alt="Evidence">
+                            </div>
+                            <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;">
+                                <span style="font-size:12px;font-weight:800;color:#ef4444;letter-spacing:0.05em;">${item.type}</span>
+                                <span style="font-size:11px;color:#64748b;font-weight:600;font-family:monospace;">${item.time}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(err => {
+                    console.error(err);
+                    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#ef4444;font-size:14px;font-weight:500;">Gagal memuat galeri</div>';
+                });
+        }
     </script>
 </body>
 
 </html>
+
+ini file index html

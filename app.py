@@ -5,6 +5,7 @@ from ultralytics import YOLO
 import time
 import os
 import random
+import glob
 from datetime import datetime
 from insight_engine import get_ai_prediction, get_citizen_sentiment
 
@@ -15,6 +16,21 @@ app = Flask(__name__)
 # ==========================================
 model_traffic = YOLO("weights/best.pt")
 model_human = YOLO("weights/yolo11n.pt") 
+
+EVIDENCE_DIR = os.path.join('static', 'image')
+
+def initialize_evidence_folder():
+    if not os.path.exists(EVIDENCE_DIR):
+        os.makedirs(EVIDENCE_DIR)
+    else:
+        files = glob.glob(os.path.join(EVIDENCE_DIR, '*.jpg'))
+        for f in files:
+            try:
+                os.remove(f)
+            except Exception as e:
+                print(f"Error removing {f}: {e}")
+
+initialize_evidence_folder()
 
 polygons = {'L': [], 'S': [], 'D': []}
 current_key = 'L'
@@ -40,6 +56,14 @@ def add_system_log(message, level="INFO"):
     ai_logs.append(log_entry)
     if len(ai_logs) > MAX_LOGS:
         ai_logs.pop(0)
+
+def save_evidence_screenshot(frame, violation_id, violation_type):
+    date_str = datetime.now().strftime("%Y%m%d")
+    time_str = datetime.now().strftime("%H%M%S")
+    filename = f"VIO_{violation_type}_{violation_id}_{date_str}_{time_str}.jpg"
+    filepath = os.path.join(EVIDENCE_DIR, filename)
+    cv2.imwrite(filepath, frame)
+    add_system_log(f"Bukti disimpan: {filename}", "SCAN")
 
 # ==========================================
 # 2. RUTE API (KOMUNIKASI WEB KE BACKEND)
@@ -103,6 +127,37 @@ def api_insights():
 def api_logs():
     global ai_logs
     return jsonify({"logs": ai_logs})
+
+@app.route('/api/evidence')
+def api_evidence():
+    if not os.path.exists(EVIDENCE_DIR):
+        return jsonify([])
+    
+    files = glob.glob(os.path.join(EVIDENCE_DIR, '*.jpg'))
+    evidence_list = []
+    for f in files:
+        filename = os.path.basename(f)
+        parts = filename.replace('.jpg', '').split('_')
+        
+        v_type = parts[1] if len(parts) > 1 else "UNKNOWN"
+        time_str = parts[4] if len(parts) > 4 else ""
+        
+        formatted_time = ""
+        if len(time_str) == 6:
+            formatted_time = f"{time_str[:2]}:{time_str[2:4]}:{time_str[4:]}"
+        else:
+            formatted_time = time_str
+            
+        evidence_list.append({
+            "url": f"/static/image/{filename}",
+            "filename": filename,
+            "type": v_type,
+            "time": formatted_time,
+            "raw_time": os.path.getmtime(f)
+        })
+    
+    evidence_list.sort(key=lambda x: x['raw_time'], reverse=True)
+    return jsonify(evidence_list)
 
 # ==========================================
 # 3. CORE LOGIC (AI + POLYGON RULES)
@@ -195,6 +250,7 @@ def generate_frames():
                             violation_stats['bus_lane'] += 1
                             logged_ids.add(f"{id}_L")
                             add_system_log(f"PELANGGARAN JALUR! ID:{int(id)} ({label}) masuk area Busway.", "ALERT")
+                            save_evidence_screenshot(annotated_frame, int(id), 'BUSLANE')
 
                 # --- RULE D (Traffic Light / Long Stop) ---
                 # Diberikan waktu aman selama 180 detik (3 menit) untuk antrean lampu merah
@@ -204,6 +260,7 @@ def generate_frames():
                         violation_stats['illegal_stop'] += 1
                         logged_ids.add(f"{id}_D")
                         add_system_log(f"PARKIR LIAR! ID:{int(id)} ({label}) menetap > 3 menit di area D.", "ALERT")
+                        save_evidence_screenshot(annotated_frame, int(id), 'ILLEGALSTOP')
 
                 # --- RULE S (Safe Drop-off Zone) ---
                 # Hanya curigai Mobil/Truk/Auto. Motor ("Two Wheeler") AMAN!
@@ -220,6 +277,7 @@ def generate_frames():
                                 violation_stats['suspicious_dropoff'] += 1
                                 logged_ids.add(f"{id}_drop")
                                 add_system_log(f"DROP-OFF ILEGAL! Manusia terdeteksi mendekat ke ID:{int(id)} ({label}) di luar zona S.", "ALERT")
+                                save_evidence_screenshot(annotated_frame, int(id), 'DROPOFF')
 
         # Gambar Layer Poligon
         overlay = annotated_frame.copy()
@@ -246,3 +304,5 @@ def video_feed():
 
 if __name__ == "__main__":
     app.run(debug=True, threaded=True)
+
+  

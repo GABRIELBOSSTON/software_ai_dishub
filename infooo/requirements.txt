@@ -1,0 +1,34 @@
+----------------jadi tambahkan fitur yang kurang:
+"Slider Sensitivitas AI" (Tanpa Coding Ulang)
+Masalah: AI kadang terlalu sensitif (false positive) atau terlalu longgar.
+Solusi simpel: Tambahkan slider di UI untuk atur threshold confidence.
+javascript
+12
+Manfaat: User bisa sesuaikan sendiri tanpa minta developer ubah kode.
+🎯 Gampangnya: Kayak atur kecerahan layar HP, tapi untuk "kepekaan" AI.
+
+-membuat grafik perjalanan per jam 
+
+log bisa di cari contoh jam 
+
+keamanan:
+-amankan file csv agar tidak di edit
+
+-via NLP Chatbot, (kendaraan udah diam minimal 5 detik): kalo ada orang.
+  
+-  🏆 "Leaderboard Pelanggar Terbanyak"
+Ide: Tampilkan ranking "Top 5 Pelanggar Minggu Ini" (plat nomor disensor sebagian).
+
+----------masalah yanhg harus di hadapai:
+
+-"Apakah punya confusion matrix atau hasil evaluasi model best.pt?". 
+  
+
+
+  Menurut lo sendiri, bagian mana yang paling berisiko saat demo ke juri? Karena dari yang gue baca:
+Flask streaming MJPEG ke satu <img> tag itu rentan lag kalau koneksi demo tidak stabil
+  masalah=1. 
+  Risiko Jaringan MJPEG (Solusi: Turunkan Resolusi & Kualitas), jadi jaringan jelek akan mempengrauhi , jadi disesuaikan 
+  dengan jaringan yang ada 
+
+

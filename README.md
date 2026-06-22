@@ -19,15 +19,15 @@ Menjembatani kesenjangan antara keluhan masyarakat dan tindakan pemerintah. Warg
 
 ### 2. 👁️ Live CCTV Vision Tracking (YOLO AI)
 Menggunakan algoritma *Deep Learning* untuk mendeteksi, mengklasifikasi, dan melacak kendaraan secara langsung dari *stream* CCTV publik. Dilengkapi dengan fitur penggambaran zona pelanggaran interaktif (*Bus Lane, Ngetem Area*), serta ekstraksi plat nomor (ANPR).
-![Live Vision Tracking](foto/22222222222222Screenshot%202026-06-22%20122858.jpg)
+![Live Vision Tracking](foto/2.png)
 
 ### 3. 🧠 Analytics Workspace & Predictive Insights (RAG-LLM)
 Ini adalah "otak" dari sistem kami. Panel ini tidak hanya menampilkan log hasil *scan* CCTV secara *live*, tetapi juga mengintegrasikan asisten AI (Ollama) yang mampu memberikan **Predictive Insights** menggunakan bahasa manusia yang natural berdasarkan situasi jalan saat itu juga.
-![Analytics Workspace](foto/3333333333Screenshot%202026-06-22%20122935.jpg)
+![Analytics Workspace](foto/3.png)
 
 ### 4. 🗺️ Real-Time Hotspot Mapping
 Sistem secara otomatis mengubah log pelanggaran visual dan keluhan warga menjadi peta panas spasial terintegrasi. Pengambil kebijakan dapat dengan mudah melihat titik-titik rawan macet atau area invasi jalur khusus langsung dari atas peta Jakarta.
-![Hotspot Mapping](foto/111Screenshot%202026-06-22%20122639.jpg)
+![Hotspot Mapping](foto/111Screenshot%202026-06-22%20122639.png)
 
 ---
 

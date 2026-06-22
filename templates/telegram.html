@@ -1,0 +1,201 @@
+<style>
+/* iOS Toggle Switch */
+.tg-toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background: #cbd5e1;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+.tg-toggle-switch.active {
+    background: #3b82f6;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 0 8px rgba(59,130,246,0.5);
+}
+.tg-toggle-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.tg-toggle-switch.active .tg-toggle-knob {
+    transform: translateX(16px);
+}
+
+.telegram-pill {
+    position: fixed;
+    bottom: 96px; /* Above brand-pill */
+    left: 24px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    border-radius: 100px; /* Pill shape */
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.6);
+    transition: all 0.3s ease;
+}
+.telegram-pill:hover {
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.9);
+}
+
+/* Modal Checkbox */
+.tg-checkbox {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #cbd5e1;
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    background: transparent;
+}
+.tg-checkbox:checked {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+.tg-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 5px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+#telegramSettingsModal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(5,5,15,0.6);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+#telegramSettingsModal.open {
+    display: flex;
+    opacity: 1;
+}
+
+.tg-modal-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    width: 100%;
+    max-width: 360px;
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255,255,255,0.5);
+    overflow: hidden;
+    transform: translateY(20px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#telegramSettingsModal.open .tg-modal-card {
+    transform: translateY(0) scale(1);
+}
+</style>
+
+<!-- TELEGRAM PILL -->
+<div class="telegram-pill">
+    <!-- Telegram SVG -->
+    <div style="width:28px;height:28px;background:linear-gradient(135deg, #2AABEE, #229ED9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(42,171,238,0.4);">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:14px;height:14px;fill:white;transform:translateX(-1px) translateY(1px);">
+            <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.664 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+        </svg>
+    </div>
+    
+    <span style="font-size:13px;font-weight:800;color:#0f172a;letter-spacing:-0.01em;">Telegram Auto-Report</span>
+
+    <div class="tg-toggle-switch" id="tgToggle" onclick="toggleTelegram()">
+        <div class="tg-toggle-knob"></div>
+    </div>
+
+    <button onclick="openTelegramSettings()" style="background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:4px;border-radius:50%;transition:background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='transparent'">
+        <svg xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;color:#64748b;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+    </button>
+</div>
+
+<!-- TELEGRAM SETTINGS MODAL -->
+<div id="telegramSettingsModal">
+    <div class="tg-modal-card">
+        <div style="padding:16px 20px;border-bottom:1px solid rgba(0,0,0,0.05);display:flex;align-items:center;gap:12px;">
+            <div style="width:36px;height:36px;background:#eff6ff;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#3b82f6;">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+            </div>
+            <div>
+                <h3 style="font-size:14px;font-weight:800;color:#0f172a;margin:0;">Konfigurasi Telegram</h3>
+                <p style="font-size:11px;color:#64748b;margin:0;font-weight:500;">Pilih penerima auto-report</p>
+            </div>
+        </div>
+        
+        <div style="padding:20px;">
+            <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:16px;padding:8px;border-radius:12px;transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" class="tg-checkbox" checked>
+                <div style="display:flex;flex-direction:column;">
+                    <span style="font-size:13px;font-weight:700;color:#1e293b;">Grup Command Center</span>
+                    <span style="font-size:10px;color:#94a3b8;font-weight:500;">Laporan umum pelanggaran lalu lintas</span>
+                </div>
+            </label>
+            
+            <label style="display:flex;align-items:center;gap:12px;cursor:pointer;padding:8px;border-radius:12px;transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" class="tg-checkbox">
+                <div style="display:flex;flex-direction:column;">
+                    <span style="font-size:13px;font-weight:700;color:#1e293b;">Kepala Dishub (Bpk. Gabe)</span>
+                    <span style="font-size:10px;color:#94a3b8;font-weight:500;">Hanya pelanggaran high-priority / macet total</span>
+                </div>
+            </label>
+        </div>
+
+        <div style="padding:16px 20px;background:#f8fafc;border-top:1px solid rgba(0,0,0,0.05);display:flex;justify-content:flex-end;">
+            <button onclick="closeTelegramSettings()" style="background:#2563eb;color:white;border:none;padding:10px 24px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,0.3);transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(37,99,235,0.4)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 12px rgba(37,99,235,0.3)'">
+                Simpan
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleTelegram() {
+        const toggle = document.getElementById('tgToggle');
+        toggle.classList.toggle('active');
+        const isChecked = toggle.classList.contains('active');
+        
+        fetch('/toggle_telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({status: isChecked})
+        }).catch(err => console.error("Error toggling Telegram:", err));
+    }
+
+    function openTelegramSettings() {
+        const modal = document.getElementById('telegramSettingsModal');
+        modal.classList.add('open');
+    }
+
+    function closeTelegramSettings() {
+        const modal = document.getElementById('telegramSettingsModal');
+        modal.classList.remove('open');
+    }
+</script>

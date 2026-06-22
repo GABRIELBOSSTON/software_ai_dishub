@@ -1,0 +1,647 @@
+<!-- ═══════════════════════════════════════════════════════
+     CCTV MODAL — Dark Glass Premium
+     Konsisten dengan Analytics Workspace theme
+     Ganti seluruh <style> + <div id="cctvModal"> kamu
+════════════════════════════════════════════════════════ -->
+
+<style>
+    /* ─────────────────────────────────────────────────────────
+   CCTV MODAL — DARK GLASS PREMIUM THEME
+   Font: DM Sans + DM Mono (sudah diload dari Analytics)
+───────────────────────────────────────────────────────── */
+
+    /* ── BACKDROP ── */
+    #cctvModal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: rgba(0, 0, 0, 0.72);
+        backdrop-filter: blur(24px) saturate(1.6);
+        -webkit-backdrop-filter: blur(24px) saturate(1.6);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        font-family: 'DM Sans', system-ui, sans-serif;
+    }
+
+    #cctvModal.open {
+        display: flex;
+        animation: cctv-fade-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes cctv-fade-in {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    /* ── MODAL CARD ── */
+    .modal-card {
+        width: 100%;
+        max-width: 1020px;
+        max-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        /* Same multi-layer glass as Analytics */
+        background:
+            linear-gradient(160deg,
+                rgba(255, 255, 255, 0.06) 0%,
+                rgba(255, 255, 255, 0.02) 40%,
+                rgba(0, 0, 0, 0.0) 100%),
+            rgba(10, 10, 16, 0.78);
+        backdrop-filter: blur(40px) saturate(2);
+        -webkit-backdrop-filter: blur(40px) saturate(2);
+        border-radius: 22px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.08),
+            0 1px 0 0 rgba(255, 255, 255, 0.18),
+            0 60px 120px rgba(0, 0, 0, 0.9),
+            0 20px 50px rgba(0, 0, 0, 0.55),
+            inset 0 0 60px rgba(255, 255, 255, 0.012);
+        animation: cctv-card-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes cctv-card-in {
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(16px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    /* Chrome shimmer on top edge */
+    .modal-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 20px;
+        right: 20px;
+        height: 1px;
+        background: linear-gradient(90deg,
+                transparent, rgba(255, 255, 255, 0.28) 25%,
+                rgba(255, 255, 255, 0.28) 75%, transparent);
+        border-radius: 2px;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    /* ── HEADER ── */
+    .cctv-header {
+        flex-shrink: 0;
+        padding: 18px 24px;
+        background: linear-gradient(180deg,
+                rgba(255, 255, 255, 0.07) 0%,
+                rgba(255, 255, 255, 0.03) 100%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+    }
+
+    /* ── ICON BOX ── */
+    .cctv-icon-box {
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+        background: rgba(255, 255, 255, 0.09);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    /* ── HEADER ICON BUTTONS ── */
+    .cctv-hbtn {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        color: rgba(255, 255, 255, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .cctv-hbtn:hover {
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(255, 255, 255, 0.25);
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .cctv-hbtn.danger:hover {
+        background: rgba(255, 70, 70, 0.18);
+        border-color: rgba(255, 80, 80, 0.35);
+        color: #ff6b6b;
+    }
+
+    /* ── BODY ── */
+    .cctv-body {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    /* ── VIDEO PANEL ── */
+    .cctv-video-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        gap: 14px;
+        min-height: 0;
+    }
+
+    /* ── VIDEO WRAPPER ── */
+    .cctv-video-wrapper {
+        position: relative;
+        flex: 1;
+        background: #000;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        min-height: 0;
+    }
+
+    #streamVideo {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* ── LIVE BADGE ── */
+    .cctv-live-badge {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50px;
+        padding: 5px 12px;
+        color: white;
+        font-size: 9.5px;
+        font-weight: 800;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+    }
+
+    /* ── TIMESTAMP BADGE ── */
+    .cctv-ts-badge {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        z-index: 10;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 8px;
+        padding: 5px 11px;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 10px;
+        font-family: 'DM Mono', monospace;
+        font-weight: 500;
+        letter-spacing: 0.05em;
+    }
+
+    /* ── CONTROL BAR (floating) ── */
+    .cctv-control-bar {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 15;
+        background: rgba(6, 6, 12, 0.88);
+        backdrop-filter: blur(24px) saturate(1.8);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 50px;
+        padding: 7px 10px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        white-space: nowrap;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .cctv-divider {
+        width: 1px;
+        height: 22px;
+        background: rgba(255, 255, 255, 0.12);
+        flex-shrink: 0;
+    }
+
+    /* ── AI TOGGLE BUTTON ── */
+    .btn-ai-toggle {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 16px;
+        border-radius: 50px;
+        font-size: 10.5px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.22s ease;
+        letter-spacing: 0.06em;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    .btn-ai-off {
+        background: rgba(255, 70, 70, 0.2);
+        border: 1px solid rgba(255, 70, 70, 0.35);
+        color: rgba(255, 140, 140, 0.9);
+    }
+
+    .btn-ai-off:hover {
+        background: rgba(255, 70, 70, 0.3);
+        border-color: rgba(255, 70, 70, 0.55);
+    }
+
+    .btn-ai-on {
+        background: rgba(74, 222, 128, 0.2);
+        border: 1px solid rgba(74, 222, 128, 0.45);
+        color: rgba(134, 239, 172, 0.95);
+        box-shadow: 0 0 16px rgba(74, 222, 128, 0.35);
+    }
+
+    .btn-ai-on:hover {
+        background: rgba(74, 222, 128, 0.3);
+    }
+
+    /* ── DRAW BUTTONS ── */
+    .btn-draw {
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 7px 15px;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        letter-spacing: 0.04em;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    .btn-draw-l {
+        background: rgba(59, 130, 246, 0.18);
+        border: 1px solid rgba(59, 130, 246, 0.32);
+        color: rgba(147, 197, 253, 0.9);
+    }
+
+    .btn-draw-l:hover {
+        background: rgba(59, 130, 246, 0.32);
+    }
+
+    .btn-draw-l.active {
+        background: rgba(59, 130, 246, 0.85);
+        border-color: #93c5fd;
+        color: white;
+        box-shadow: 0 0 14px rgba(59, 130, 246, 0.55);
+    }
+
+    .btn-draw-s {
+        background: rgba(34, 197, 94, 0.18);
+        border: 1px solid rgba(34, 197, 94, 0.32);
+        color: rgba(134, 239, 172, 0.9);
+    }
+
+    .btn-draw-s:hover {
+        background: rgba(34, 197, 94, 0.32);
+    }
+
+    .btn-draw-s.active {
+        background: rgba(34, 197, 94, 0.85);
+        border-color: #86efac;
+        color: white;
+        box-shadow: 0 0 14px rgba(34, 197, 94, 0.55);
+    }
+
+    .btn-draw-d {
+        background: rgba(239, 68, 68, 0.18);
+        border: 1px solid rgba(239, 68, 68, 0.32);
+        color: rgba(252, 165, 165, 0.9);
+    }
+
+    .btn-draw-d:hover {
+        background: rgba(239, 68, 68, 0.32);
+    }
+
+    .btn-draw-d.active {
+        background: rgba(239, 68, 68, 0.85);
+        border-color: #fca5a5;
+        color: white;
+        box-shadow: 0 0 14px rgba(239, 68, 68, 0.55);
+    }
+
+    .btn-draw-c {
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    .btn-draw-c:hover {
+        background: rgba(255, 255, 255, 0.14);
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    /* ── STREAM QUALITY BUTTONS ── */
+    .btn-quality {
+        font-size: 9px;
+        font-weight: 800;
+        padding: 5px 12px;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        letter-spacing: 0.06em;
+        font-family: 'DM Sans', sans-serif;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.5);
+        border: none;
+        outline: none;
+    }
+
+    .btn-quality:hover {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .btn-quality.active {
+        background: rgba(59, 130, 246, 0.85);
+        color: white;
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    }
+
+    /* ── WATERMARK OVERLAYS ── */
+    .cctv-watermark {
+        position: absolute;
+        z-index: 10;
+        pointer-events: none;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 7px;
+        padding: 5px 12px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    /* ── STAT CARDS ── */
+    .cctv-stat-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+    .cctv-stat {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 13px;
+        padding: 13px 16px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+        transition: background 0.2s;
+    }
+
+    .cctv-stat:hover {
+        background: rgba(255, 255, 255, 0.09);
+    }
+
+    .cctv-stat-label {
+        font-size: 8.5px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        margin-bottom: 5px;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    .cctv-stat-value {
+        font-size: 17px;
+        font-weight: 900;
+        font-family: 'DM Sans', sans-serif;
+        letter-spacing: -0.02em;
+    }
+
+    /* ── FOOTER ── */
+    .cctv-footer {
+        flex-shrink: 0;
+        padding: 14px 24px;
+        background: rgba(255, 255, 255, 0.03);
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .cctv-footer-btn {
+        padding: 10px 26px;
+        border-radius: 11px;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-family: 'DM Sans', sans-serif;
+        letter-spacing: 0.01em;
+    }
+
+    .cctv-footer-btn-close {
+        background: rgba(255, 255, 255, 0.09);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: rgba(255, 255, 255, 0.75);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .cctv-footer-btn-close:hover {
+        background: rgba(255, 255, 255, 0.16);
+        border-color: rgba(255, 255, 255, 0.28);
+        color: white;
+    }
+
+    /* ── PULSE ANIMATION ── */
+    @keyframes pulse {
+
+        0%,
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: 0.5;
+            transform: scale(1.25);
+        }
+    }
+</style>
+
+<!-- ═══════════════════════════════════════════════════════
+     CCTV MODAL HTML
+════════════════════════════════════════════════════════ -->
+<div id="cctvModal">
+    <div class="modal-card">
+
+        <!-- ── HEADER ── -->
+        <div class="cctv-header">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <!-- Icon -->
+                <div class="cctv-icon-box">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:22px;height:22px;" fill="none"
+                        viewBox="0 0 24 24" stroke="rgba(255,255,255,0.85)" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <!-- Title -->
+                <div>
+                    <h2 id="modalTitle"
+                        style="margin:0;font-size:16px;font-weight:800;color:rgba(255,255,255,0.92);letter-spacing:-0.02em;line-height:1.2;">
+                        Live Camera Feed</h2>
+                    <span id="modalLocation"
+                        style="font-size:12px;color:rgba(255,255,255,0.4);font-weight:500;font-family:'DM Mono',monospace;letter-spacing:0.02em;">Jl.
+                        Veteran Depan Matos — Malang</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display:flex;gap:7px;">
+                <button onclick="refreshStream()" class="cctv-hbtn" title="Refresh Stream">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:17px;height:17px;" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+                <button onclick="closeCctvModal()" class="cctv-hbtn danger" title="Tutup">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- ── BODY ── -->
+        <div class="cctv-body">
+            <div class="cctv-video-panel">
+
+                <!-- ── VIDEO FRAME ── -->
+                <div class="cctv-video-wrapper">
+
+                    <!-- Live stream -->
+                    <img id="streamVideo" src="{{ url_for('video_feed') }}"
+                        style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;">
+
+                    <!-- LIVE Badge -->
+                    <div class="cctv-live-badge">
+                        <span
+                            style="width:7px;height:7px;background:#ef4444;border-radius:50%;flex-shrink:0;box-shadow:0 0 7px rgba(239,68,68,0.9);animation:pulse 1.5s infinite;"></span>
+                        LIVE
+                    </div>
+
+                    <!-- Timestamp -->
+                    <div class="cctv-ts-badge" id="timestamp"></div>
+
+                    <!-- ── CONTROL BAR ── -->
+                    <div class="cctv-control-bar">
+
+                        <!-- AI Toggle -->
+                        <button id="btnToggleAI" class="btn-ai-toggle btn-ai-off" onclick="toggleAIEngine()">
+                            <div id="aiIndicator"
+                                style="width:7px;height:7px;border-radius:50%;background:#ef4444;box-shadow:0 0 7px rgba(239,68,68,0.9);flex-shrink:0;">
+                            </div>
+                            AI DETECTION
+                        </button>
+
+                        <div class="cctv-divider"></div>
+
+                        <!-- Stream Quality -->
+                        <div
+                            style="display:flex;align-items:center;background:rgba(255,255,255,0.05);border-radius:50px;padding:3px;border:1px solid rgba(255,255,255,0.08);">
+                            <button class="btn-quality active" onclick="setStreamQuality('high', this)">HD</button>
+                            <button class="btn-quality" onclick="setStreamQuality('med', this)">SD</button>
+                            <button class="btn-quality" onclick="setStreamQuality('low', this)">LOW</button>
+                        </div>
+
+                        <div class="cctv-divider"></div>
+
+                        <!-- Zone Buttons -->
+                        <button id="btnModeL" class="btn-draw btn-draw-l" onclick="setDrawMode('L')">L Bus Lane</button>
+                        <button id="btnModeS" class="btn-draw btn-draw-s" onclick="setDrawMode('S')">S Ngetem</button>
+                        <button id="btnModeD" class="btn-draw btn-draw-d" onclick="setDrawMode('D')">D Lampu</button>
+
+                        <div class="cctv-divider"></div>
+
+                        <button class="btn-draw btn-draw-c" onclick="clearDrawMode()">✕ Clear</button>
+                    </div>
+
+                    <!-- Watermark Bottom Left -->
+                    <div class="cctv-watermark" style="bottom:14px;left:14px;">Diskominfo Kota Malang</div>
+                    <!-- Watermark Bottom Right -->
+                    <div class="cctv-watermark" style="bottom:14px;right:14px;">Jl. Veteran Depan Matos</div>
+
+                </div>
+                <!-- /video-wrapper -->
+
+                <!-- ── STAT CARDS ── -->
+                <div class="cctv-stat-row">
+                    <div class="cctv-stat">
+                        <p class="cctv-stat-label" style="color:rgba(147,197,253,0.8);">Kepadatan Lalu Lintas</p>
+                        <p class="cctv-stat-value" style="color:rgba(255,255,255,0.88);">Sedang</p>
+                    </div>
+                    <div class="cctv-stat">
+                        <p class="cctv-stat-label" style="color:rgba(134,239,172,0.8);">Status Perangkat</p>
+                        <p class="cctv-stat-value" style="color:rgba(255,255,255,0.88);">Normal</p>
+                    </div>
+                </div>
+
+            </div>
+            <!-- /video-panel -->
+        </div>
+        <!-- /body -->
+
+        <!-- ── FOOTER ── -->
+        <div class="cctv-footer">
+            <span
+                style="font-size:10px;color:rgba(255,255,255,0.2);font-family:'DM Mono',monospace;font-weight:500;margin-right:auto;letter-spacing:0.04em;">AI
+                VISION SYSTEM v2.1</span>
+            <button onclick="closeCctvModal()" class="cctv-footer-btn cctv-footer-btn-close">Tutup Jendela</button>
+        </div>
+
+    </div>
+    <!-- /modal-card -->
+</div>
+
+<script>
+    function setStreamQuality(quality, btn) {
+        document.querySelectorAll('.btn-quality').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        fetch('/set_quality', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quality: quality })
+        }).catch(err => console.error("Error setting quality:", err));
+    }
+</script>
+<!-- /cctvModal -->

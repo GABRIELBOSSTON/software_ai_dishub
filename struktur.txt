@@ -1,0 +1,34 @@
+Folder PATH listing for volume Ventoy
+Volume serial number is 00000025 4E21:0000
+E:.
+¦   app.py
+¦   cctv.py
+¦   insight_engine.py
+¦   Laporan_Pelanggaran_Gadog.csv
+¦   struktur.txt
+¦   
++---infooo
+¦       catetan_aja.txt
+¦       
++---static
+¦   +---image
++---templates
+¦       chatbot_test.html
+¦       index.html
+¦       Analytics.html
+¦       cctv.html
+¦       telegram.html
+¦       pelaporan.html
+¦       
++---videos
+¦       cctv_gadog.mp4
+¦       qcctv_gadog.mp4
+¦       scctv_gadog.mp4
+¦       
++---weights
+¦       best.pt
+¦       yolo11n.pt
+¦       
++---__pycache__
+        insight_engine.cpython-313.pyc
+        

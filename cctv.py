@@ -8,7 +8,7 @@ def generate_live_stream():
     """Mensimulasikan CCTV yang menyala 24/7 (Looping Video)"""
     while True:
         # Ganti path ini sesuai dengan video target kamu
-        cap = cv2.VideoCapture("videos/cctv_gadog.mp4") 
+        cap = cv2.VideoCapture("videos/scctv_gadog.mp4") 
         
         # Ambil FPS asli video agar stream tidak terlalu cepat/lambat
         fps = cap.get(cv2.CAP_PROP_FPS)
